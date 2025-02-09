@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QwenLM Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f9;
+        }
+        .chat-container {
+            width: 80%;
+            max-width: 600px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .chat-header {
+            background-color: #007bff;
+            color: #fff;
+            padding: 15px;
+            text-align: center;
+        }
+        .chat-body {
+            height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        .chat-message {
+            margin-bottom: 10px;
+        }
+        .chat-message.user {
+            text-align: right;
+        }
+        .chat-message.bot {
+            text-align: left;
+        }
+        .chat-input {
+            display: flex;
+            padding: 15px;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        .chat-input button {
+            padding: 10px 20px;
+            border: none;
+            background-color: #007bff;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .chat-input button:hover {
+            background-color: #0056b3;
+        }
+        .chat-message.bot pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .chat-message.bot code {
+            background-color: #f5f5f5;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        /* Highlight.js styles */
+        .hljs {
+            display: block;
+            overflow-x: auto;
+            padding: 0.5em;
+            background: #f5f5f5;
+            color: #333;
+        }
+        .hljs-comment,
+        .hljs-quote {
+            color: #999;
+        }
+        .hljs-keyword,
+        .hljs-selector-tag,
+        .hljs-subst {
+            color: #333;
+            font-weight: bold;
+        }
+        .hljs-number,
+        .hljs-literal,
+        .hljs-variable,
+        .hljs-template-variable,
+        .hljs-tag .hljs-attr {
+            color: #008080;
+        }
+        .hljs-string,
+        .hljs-doctag {
+            color: #dd1144;
+        }
+        .hljs-title,
+        .hljs-section,
+        .hljs-selector-id {
+            color: #3333cc;
+        }
+        .hljs-subst {
+            font-weight: normal;
+        }
+        .hljs-type,
+        .hljs-class .hljs-title {
+            color: #666699;
+        }
+        .hljs-regexp,
+        .hljs-link {
+            color: #dd1144;
+        }
+        .hljs-symbol,
+        .hljs-bullet {
+            color: #008080;
+        }
+        .hljs-built_in,
+        .hljs-builtin-name {
+            color: #0086b3;
+        }
+        .hljs-meta {
+            color: #999;
+            font-weight: bold;
+        }
+        .hljs-deletion {
+            background: #fdd;
+        }
+        .hljs-addition {
+            background: #dfd;
+        }
+        .hljs-emphasis {
+            font-style: italic;
+        }
+        .hljs-strong {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>Chat with Deepseek-R1</h2>
+        </div>
+        <div class="chat-body" id="chat-body">
+            <!-- Messages will appear here -->
+        </div>
+        <div class="chat-input">
+            <input type="text" id="user-input" placeholder="Type a message...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script>
+        const apiUrl = 'https://qianfan.baidubce.com/v2/chat/completions';
+        const apiKey = 'bce-v3/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
+        const modelId = 'deepseek-r1';
+
+        // Configure marked to use highlight.js for code blocks
+        marked.setOptions({
+            highlight: function(code, language) {
+                const validLanguage = hljs.getLanguage(language) ? language : 'plaintext';
+                return hljs.highlight(code, { language: validLanguage }).value;
+            }
+        });
+
+        async function sendMessage() {
+            const userInput = document.getElementById('user-input');
+            const chatBody = document.getElementById('chat-body');
+            const userMessage = userInput.value.trim();
+
+            if (userMessage === '') return;
+
+            // Create user message element
+            const userMessageElement = document.createElement('div');
+            userMessageElement.className = 'chat-message user';
+            userMessageElement.textContent = userMessage;
+            chatBody.appendChild(userMessageElement);
+
+            // Clear input field
+            userInput.value = '';
+
+            // Create bot message container
+            const botMessageElement = document.createElement('div');
+            botMessageElement.className = 'chat-message bot';
+            chatBody.appendChild(botMessageElement);
+
+            // Scroll to bottom
+            chatBody.scrollTop = chatBody.scrollHeight;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: modelId,
+                        messages: [
+                            { role: 'user', content: userMessage }
+                        ]
+                    })
+                });
+
+                console.log('API Response:', response);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('API Data:', data);
+
+                const botResponse = data.result || data.choices[0].message.content;
+
+                // Stream the bot's response character by character
+                await streamResponse(botMessageElement, botResponse);
+
+                // Apply Markdown and syntax highlighting after streaming
+                botMessageElement.innerHTML = marked.parse(botResponse);
+
+                // Scroll to bottom
+                chatBody.scrollTop = chatBody.scrollHeight;
+            } catch (error) {
+                console.error('Error sending message:', error);
+                const errorMessageElement = document.createElement('div');
+                errorMessageElement.className = 'chat-message bot';
+                errorMessageElement.textContent = 'Failed to get a response from the server.';
+                chatBody.appendChild(errorMessageElement);
+            }
+        }
+
+        async function streamResponse(element, text) {
+            let currentText = '';
+            for (const char of text) {
+                currentText += char;
+                element.textContent = currentText; // Update the displayed text
+                await new Promise(resolve => setTimeout(resolve, 20)); // Delay between characters
+            }
+        }
+
+        // Press Enter to send message
+        document.getElementById('user-input').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
